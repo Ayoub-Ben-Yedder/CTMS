@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Tournament</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital@0;1&display=swap');
+
+        body,
+        input,
+        button {
+            font-family: "Playfair Display", serif;
+            background-color: #2a2a2a;
+            color: white;
+            margin: 5px;
+            box-shadow: none;
+        }
+        input:focus{
+            box-shadow: none;
+        }
+        button {
+            padding: 5px 25px;
+            margin: 5px;
+        }
+
+        #placement,
+        #container,
+        #pairing {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        #player {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            padding: 3rem;
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            min-width: 10rem;
+        }
+
+
+        tbody tr:nth-of-type(even) {
+            background-color: #4b4b4b;
+        }
+
+        tr:hover {
+            background-color: #696868;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="player">
+        <div>
+            <div class="label">
+                Player name:
+            </div>
+            <div class="input">
+                <input type="text" id="name">
+            </div>
+            <div class="label">
+                Player Elo:
+            </div>
+            <div class="input">
+                <input type="text" id="rank">
+            </div>
+            <div>
+                <button onclick="addPlayer()">Add Player</button>
+            </div>
+            <div>
+                <button onclick="startTournament()">Start Tournament</button>
+            </div>
+        </div>
+        <div id="container">
+            <div>
+                <h1>Players Joined</h1>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Elo</th>
+                    </tr>
+                </thead>
+                <tbody id="playerTable">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="pairing">
+        <div>
+            <h1 id="round-title">Round 1</h1>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>White</th>
+                    <th>Black</th>
+                    <th>Outcome</th>
+                </tr>
+            </thead>
+            <tbody id="pairingTable">
+            </tbody>
+        </table>
+        <button onclick="showPlacements()">Show Placements</button>
+        <button onclick="nextRound()">Next Round</button>
+        <div id="error"></div>
+    </div>
+    <div id="placement">
+        <div>
+            <h1>Placements</h1>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Score</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Draws</th>
+                </tr>
+            </thead>
+            <tbody id="placementTable">
+            </tbody>
+        </table>
+        <button onclick="showPairings()">Show Pairings</button>
+    </div>
+
+    <script>
+        window.addEventListener("load", () => showPlayers());
+        var players = [];
+        var matchs = [];
+        var round = 0;
+        function startTournament() {
+            document.getElementById("player").style.display = "none";
+            document.getElementById("pairing").style.display = "flex";
+            document.getElementById("placement").style.display = "none";
+            pairPlayers();
+        }
+        function showPairings() {
+            document.getElementById("player").style.display = "none";
+            document.getElementById("pairing").style.display = "flex";
+            document.getElementById("placement").style.display = "none";
+            fillPairings();
+        }
+        function showPlacements() {
+            document.getElementById("player").style.display = "none";
+            document.getElementById("pairing").style.display = "none";
+            document.getElementById("placement").style.display = "flex";
+            fillPlacements();
+        }
+        function showPlayers() {
+            document.getElementById("player").style.display = "flex";
+            document.getElementById("pairing").style.display = "none";
+            document.getElementById("placement").style.display = "none";
+            fillPlayers();
+        }
+
+        function fillPlayers() {
+            document.getElementById("playerTable").innerHTML = '';
+            if (players.length == 0) {
+                document.getElementById("playerTable").innerHTML = "No Player is joined.";
+            } else {
+                players.sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name));
+                players.forEach(p => {
+                    var tr = document.createElement("tr");
+                    tr.innerHTML = "<td>" + p.name + "</td><td>" + p.rank + "</td>";
+                    document.getElementById("playerTable").appendChild(tr);
+                });
+            }
+        }
+
+        function fillPlacements() {
+            document.getElementById("placementTable").innerHTML = '';
+            players.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+            players.forEach(p => {
+                var tr = document.createElement("tr");
+                tr.innerHTML = "<td>" + p.name + "</td><td>" + p.score + "</td><td>" + p.w + "</td><td>" + p.l + "</td><td>" + p.d + "</td>";
+                document.getElementById("placementTable").appendChild(tr);
+            });
+        }
+
+        function fillPairings() {
+            document.getElementById("pairingTable").innerHTML = '';
+            document.getElementById("round-title").innerHTML = "Round " + round;
+            var index = 0;
+            matchs.forEach(m => {
+                var tr = document.createElement("tr");
+                if (m.player2) {
+                    if (m.player1.colors[m.player1.colors.length - 1] == "white") {
+                        tr.innerHTML = "<td>" + m.player1.name + "</td><td>" + m.player2.name + "</td>";
+                    } else {
+                        tr.innerHTML = "<td>" + m.player2.name + "</td><td>" + m.player1.name + "</td>";
+                    }
+                } else {
+                    if (m.player1.colors[m.player1.colors.length - 1] == "white") {
+                        tr.innerHTML = "<td>" + m.player1.name + "</td><td>BYE</td>";
+                    } else {
+                        tr.innerHTML = "<td>BYE</td><td>" + m.player1.name + "</td>";
+                    }
+                }
+                tr.innerHTML += `
+                    <td class="actions">
+                        <input type="radio" name="r${index}" id="r${index}-0" value="w">White
+                        <input type="radio" name="r${index}" id="r${index}-1" value="b">Black
+                        <input type="radio" name="r${index}" id="r${index}-2" value="d">Draw
+                    </td>
+                `;
+                index += 1;
+                document.getElementById("pairingTable").appendChild(tr);
+            });
+        }
+
+        function addPlayer() {
+            var name = document.getElementById("name").value;
+            var rank = document.getElementById("rank").value;
+            players.push({
+                name: name,
+                rank: rank,
+                score: 0,
+                w: 0,
+                l: 0,
+                d: 0,
+                colors: [],
+                opponents: []
+            });
+            fillPlayers();
+        }
+        function pairPlayers() {
+            round += 1;
+            if (round == 1) {
+                players.sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name));
+            } else {
+                players.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+            }
+            matchs = [];
+            let paired = [];
+
+            for (let i = 0; i < players.length; i++) {
+                if (paired.includes(players[i].name)) continue;
+
+                for (let j = i + 1; j < players.length; j++) {
+                    if (paired.includes(players[j].name)) continue;
+
+                    if (!players[i].opponents.includes(players[j].name)) {
+                        matchs.push({
+                            player1: players[i],
+                            player2: players[j],
+                        });
+                        paired.push(players[i].name);
+                        paired.push(players[j].name);
+                        players[i].opponents.push(players[j].name);
+                        players[j].opponents.push(players[i].name);
+                        break;
+                    }
+                }
+
+                if (!paired.includes(players[i].name)) {
+                    matchs.push({ player1: players[i], player2: null });
+                    paired.push(players[i].name);
+                }
+            }
+
+            matchs.forEach(match => {
+                if (match.player2) {
+                    if (match.player1.colors.length == 0) {
+                        match.player1.colors.push("white");
+                        match.player2.colors.push("black");
+                    } else {
+                        var p1c = match.player1.colors;
+                        var p2c = match.player2.colors;
+                        if (p1c[p1c.length - 1] == p2c[p2c.length - 1] && p1c[p1c.length - 1] == "black") {
+                            if (count(p1c, "black") > count(p2c, "black")) {
+                                match.player1.colors.push("white");
+                                match.player2.colors.push("black");
+                            } else {
+                                match.player1.colors.push("black");
+                                match.player2.colors.push("white");
+                            }
+                        } else {
+                            if (p1c[p1c.length - 1] == "black") {
+                                match.player1.colors.push("white");
+                                match.player2.colors.push("black");
+                            } else {
+                                match.player1.colors.push("black");
+                                match.player2.colors.push("white");
+                            }
+                        }
+                    }
+                }
+            });
+            fillPairings();
+        }
+        function count(t, clr) {
+            var c = 0;
+            for (var i = t.length - 1; i > -1; i--) {
+                if (t[i] != clr) {
+                    return c;
+                }
+                c++;
+            }
+            return c;
+        }
+        function nextRound() {
+            if (finished()) {
+                updateScore();
+                pairPlayers();
+                document.getElementById("error").innerHTML = "";
+            } else {
+                document.getElementById("error").innerHTML = "<h3>Not all matches are finished!</h3>";
+            }
+        }
+
+        function finished() {
+            for (var i = 0; i < matchs.length; i++) {
+                if (!(document.getElementById("r" + i + "-0").checked || document.getElementById("r" + i + "-1").checked || document.getElementById("r" + i + "-2").checked)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function updateScore() {
+            for (var i = 0; i < matchs.length; i++) {
+                if (document.getElementById("r" + i + "-0").checked) {
+                    whiteWin(i);
+                } else if (document.getElementById("r" + i + "-1").checked) {
+                    blackWin(i);
+                } else if (document.getElementById("r" + i + "-2").checked) {
+                    draw(i);
+                }
+            }
+        }
+
+        function whiteWin(index) {
+            if (matchs[index].player1.colors[matchs[index].player1.colors.length - 1] == "white") {
+                matchs[index].player1.w += 1;
+                matchs[index].player1.score += 1;
+                if (matchs[index].player2) {
+                    matchs[index].player2.l += 1;
+                }
+            } else {
+                if (matchs[index].player2) {
+                    matchs[index].player2.w += 1;
+                    matchs[index].player2.score += 1;
+                }
+                matchs[index].player1.l += 1;
+            }
+        }
+
+        function blackWin(index) {
+            if (matchs[index].player1.colors[matchs[index].player1.colors.length - 1] == "black") {
+                matchs[index].player1.w += 1;
+                matchs[index].player1.score += 1;
+                if (matchs[index].player2) {
+                    matchs[index].player2.l += 1;
+                }
+            } else {
+                if (matchs[index].player2) {
+                    matchs[index].player2.w += 1;
+                    matchs[index].player2.score += 1;
+                }
+                matchs[index].player1.l += 1;
+            }
+        }
+
+        function draw(index) {
+            matchs[index].player1.d += 1;
+            matchs[index].player1.score += 0.5;
+            if (matchs[index].player2) {
+                matchs[index].player2.d += 1;
+                matchs[index].player2.score += 0.5;
+            }
+        }
+
+    </script>
+</body>
+
+</html>
